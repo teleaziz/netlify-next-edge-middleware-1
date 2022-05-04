@@ -10,18 +10,19 @@ export async function getStaticProps({
   params,
 }) {
   const isPersonalizedRequest = params?.path?.[0].startsWith(';')
+  const targeting = isPersonalizedRequest
+  ? {
+      // if it's a personalized page let's fetch it:
+      ...getTargetingValues(params.path[0].split(';').slice(1)),
+    }
+  : {
+      urlPath: '/' + (params?.path?.join('/') || ''),
+    };
   const page =
     (await builder
       .get('page', {
         apiKey: builderConfig.apiKey,
-        userAttributes: isPersonalizedRequest
-          ? {
-              // if it's a personalized page let's fetch it:
-              ...getTargetingValues(params.path[0].split(';').slice(1)),
-            }
-          : {
-              urlPath: '/' + (params?.path?.join('/') || ''),
-            },
+        userAttributes: targeting,
         cachebust: true,
       })
       .toPromise()) || null
@@ -29,6 +30,8 @@ export async function getStaticProps({
   return {
     props: {
       page,
+      targeting,
+      locale: targeting?.locale || 'en-US',
     },
     // Next.js will attempt to re-generate the page:
     // - When a request comes in
@@ -52,6 +55,8 @@ export async function getStaticPaths() {
 
 export default function Path({
   page,
+  targeting,
+  locale,
 } ) {
   const router = useRouter()
 
@@ -93,7 +98,7 @@ export default function Path({
           ],
         }}
       />
-      <BuilderComponent model="page" content={page} />
+      <BuilderComponent context={{ targeting }} data={{ targeting , locale }} model="page" content={page} />
     </>
   )
 }
